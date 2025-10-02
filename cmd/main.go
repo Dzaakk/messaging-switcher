@@ -1,8 +1,10 @@
 package main
 
 import (
+	"log"
 	"os"
 
+	"github.com/Dzaakk/messaging-switcher/internal/broker"
 	"gopkg.in/yaml.v2"
 )
 
@@ -31,13 +33,27 @@ func loadConfig(path string) (*Config, error) {
 }
 
 func main() {
-	// cfgPath := "config.yaml"
-	// if p := os.Getenv("CONFIG_PATH"); p != "" {
-	// 	cfgPath = p
-	// }
+	cfgPath := "config.yaml"
+	if p := os.Getenv("CONFIG_PATH"); p != "" {
+		cfgPath = p
+	}
 
-	// cfg, err := loadConfig(cfgPath)
-	// if err != nil {
-	// 	log.Fatalf("load config: %v", err)
-	// }
+	cfg, err := loadConfig(cfgPath)
+	if err != nil {
+		log.Fatalf("load config: %v", err)
+	}
+
+	var br broker.Broker
+	switch cfg.Broker {
+	case "rabbitmq":
+		br, err = broker.NewRabbitBroker(cfg.RabbitMQ.URL)
+	default:
+		log.Fatalf("unkown broker: %s", cfg.Broker)
+	}
+
+	if err != nil {
+		log.Fatalf("init broker: %v", err)
+	}
+	defer br.Close()
+
 }
