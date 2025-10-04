@@ -52,9 +52,57 @@ func (k *kafkaBroker) Publish(topic string, key []byte, value []byte, headers ma
 }
 
 func (k *kafkaBroker) Consume(ctx context.Context, topic string, group string, handler Handler) error {
-	panic("unimplemented")
+	config := sarama.NewConfig()
+	config.Version = sarama.V2_5_0_0
+	config.Consumer.Offsets.Initial = sarama.OffsetNewest
+	client, err := sarama.NewConsumerGroup(k.brokers, group, config)
+	if err != nil {
+		return err
+	}
+
+	k.group = client
+	consumer := &kafkaConsumerGroupHandler{handler: handler}
+
+	go func() {
+		defer client.Close()
+		for {
+			if err := client.Consume(ctx, []string{topic}, consumer); err != nil {
+				log.Printf("[kafka] consume error: %v", err)
+			}
+			if ctx.Err() != nil {
+				return
+			}
+		}
+	}()
+
+	return nil
 }
 
 func (k *kafkaBroker) Close() error {
+	if k.producers != nil {
+		_ = k.producers.Close()
+	}
+	if k.group != nil {
+		_ = k.group.Close()
+	}
+	return nil
+}
+
+type kafkaConsumerGroupHandler struct {
+	handler Handler
+}
+
+// Cleanup implements sarama.ConsumerGroupHandler.
+func (k *kafkaConsumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error {
+	panic("unimplemented")
+}
+
+// ConsumeClaim implements sarama.ConsumerGroupHandler.
+func (k *kafkaConsumerGroupHandler) ConsumeClaim(sarama.ConsumerGroupSession, sarama.ConsumerGroupClaim) error {
+	panic("unimplemented")
+}
+
+// Setup implements sarama.ConsumerGroupHandler.
+func (k *kafkaConsumerGroupHandler) Setup(sarama.ConsumerGroupSession) error {
 	panic("unimplemented")
 }
